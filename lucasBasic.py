@@ -40,7 +40,7 @@ def optical_flow(I1path, I2path, window_size, tau=1e-2):
             v[i, j] = nu[1]
 
     return (u, v)
-def createFlowMap(disp,h,w,window):
+def createFlowMap(disp,h,w,window, flMap):
     max,min = maxMinDisp(disp)
 
     print(max)
@@ -50,7 +50,8 @@ def createFlowMap(disp,h,w,window):
             val = abs(disp[0][i][j])+abs(disp[1][i][j])
             valScaled = ((val-min)/(max-min))*(255)
             img[i][j] =[valScaled,valScaled,valScaled]
-    cv2.imwrite('dispTest2.png', np.array(img))
+    cv2.imwrite(flMap, np.array(img))
+
 def maxMinDisp(of):
     max = -1000000000
     min = 100000000
@@ -62,11 +63,23 @@ def maxMinDisp(of):
             if min>=disp:
                 min = disp
     return max,min
+
+
+def createClowMaps(startInd, endInd):
+    for i in range(startInd, endInd+1):
+        num = str(i)
+        file1 = str("0"*(6-len(num))) + num
+        path1 = "image_2/" + file1 + ".png"
+        path2 = "image_3/" + file1 + ".png"
+        print(path1)
+        print(path2)
+        print("______________")
+        of = optical_flow(path1, path2, 6)
+        measure = cv2.imread(path1)
+        createFlowMap(of,measure.shape[0],measure.shape[1],6,"FlowMap/flowMapV" + str(i) + ".png")
+        np.set_printoptions(threshold=np.inf)
+
 def main():
-    of = optical_flow("1110lhs.png", "1110.png", 6)
-    measure = cv2.imread("test1.png")
-    print(measure.shape[0])
-    createFlowMap(of,measure.shape[0],measure.shape[1],6)
-    np.set_printoptions(threshold=np.inf)
+    createClowMaps(0, 7480)
 
 main()
