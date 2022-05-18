@@ -2,6 +2,7 @@ import numpy as np
 from scipy import signal
 import cv2
 import numpy as np
+import copy
 
 
 def optical_flow(I1path, I2path, window_size, tau=1e-2):
@@ -38,32 +39,14 @@ def optical_flow(I1path, I2path, window_size, tau=1e-2):
             # if threshold τ is larger than the smallest eigenvalue of A'A:
             u[i, j] = nu[0]
             v[i, j] = nu[1]
-
     return (u, v)
-def createFlowMap(disp,h,w,window, flMap):
-    max,min = maxMinDisp(disp)
 
-    print(max)
-    img = [[[0, 0, 0] for i in range(w)] for j in range(h)]
-    for i in range(h):
-        for j in range(w):
-            val = abs(disp[0][i][j])+abs(disp[1][i][j])
-            valScaled = ((val-min)/(max-min))*(255)
-            img[i][j] =[valScaled,valScaled,valScaled]
-    cv2.imwrite(flMap, np.array(img))
-
-def maxMinDisp(of):
-    max = -1000000000
-    min = 100000000
-    for i in range(len(of[0])):
-        for j in range(len(of[0][0])):
-            disp = abs(of[0][i][j])+abs(of[0][i][j])
-            if max<=disp:
-                max = disp
-            if min>=disp:
-                min = disp
-    return max,min
-
+def createFlowMap(u,v,flMap):
+    disp = abs(u) + abs(v)
+    np.save(flMap, disp)
+    # np.set_printoptions(threshold=np.inf)
+    # np.set_printoptions(suppress=True)
+    # print(np.load(flMap))
 
 def createClowMaps(startInd, endInd):
     for i in range(startInd, endInd+1):
@@ -74,12 +57,43 @@ def createClowMaps(startInd, endInd):
         print(path1)
         print(path2)
         print("______________")
-        of = optical_flow(path1, path2, 6)
-        measure = cv2.imread(path1)
-        createFlowMap(of,measure.shape[0],measure.shape[1],6,"FlowMap/flowMapV" + str(i) + ".png")
+        u , v = optical_flow(path1, path2, 6)
         np.set_printoptions(threshold=np.inf)
+        np.set_printoptions(suppress=True)
+        # print(abs(u) + abs(v))
+        createFlowMap(u, v, "FlowMap/flowMapV" + str(i) + ".npy")
 
-def main():
-    createClowMaps(0, 7480)
+def compare(disp, groundTruth, k):
+    d = np.load(disp)
+    gt = np.load(groundTruth)
+    num = 0
+    den = 0
+    for x in range(len(d)):
+        for y in range(len(d[x])):
+            pxd = d[x][y]
+            pxgt = gt[x][y]
+            if not pxd <= 10 and not pxgt <= 0:
+                # print(str(pxd) + " " + str(pxgt))
+                if (pxd - pxgt)**2 > k**2:
+                    num += 1
+                den += 1
+    return num, den
 
-main()
+def compareAll(start, end, k):
+    num = 0
+    den = 0
+    for i in range(start, end+1):
+        number = str(i)
+        file1 = str("0"*(6-len(number))) + number
+        gt = "GroundTruth/" + file1 + ".npy"
+        disp = "FlowMap/flowMapV" + number + ".npy"
+        tempNum, tempDen = compare(disp, gt, k)
+        num += tempNum
+        den += tempDen
+        print(str(i) + "  " + str(num/den))
+    print(num/den)
+    return num/den
+
+
+if __name__ == '__main__':
+    compareAll(0, 7480, 1)
